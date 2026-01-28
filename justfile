@@ -210,3 +210,91 @@ mcp-ping-docker:
 	docker run --rm --network backend curlimages/curl:8.6.0 \
 		curl -sf http://mcp:8000/ \
 		&& echo "✅ MCP reachable from Docker network"
+
+# ---------- Observability ----------
+
+# Start observability stack
+obs-up:
+	{{compose}} up -d otel-collector prometheus loki tempo grafana promtail
+
+# Stop observability stack
+obs-down:
+	{{compose}} stop otel-collector prometheus loki tempo grafana promtail
+
+# Tail observability logs
+obs-logs:
+	{{compose}} logs -f --tail=200 otel-collector promtail loki tempo prometheus grafana
+
+# Show observability URLs
+obs-urls:
+	@echo "Grafana:    http://localhost:3000 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
+	@echo "Loki:       http://localhost:3100"
+	@echo "Tempo:      http://localhost:3200"
+	@echo "OTel:       http://localhost:4317 (grpc), http://localhost:4318 (http)"
+
+# Open Grafana in your browser
+obs-open:
+	@python - <<-'PY'
+	import os, webbrowser
+	url = os.environ.get("GRAFANA_URL", "http://localhost:3000")
+	try: webbrowser.open(url); print(f"Opened {url} in the default browser.")
+	except Exception as e: print(f"Please open {url} manually (auto-open failed: {e})")
+	PY
+
+# Restart observability stack
+obs-restart:
+	{{compose}} restart otel-collector promtail loki tempo prometheus grafana
+
+# Observability health checks
+obs-status:
+	@echo "Prometheus:"
+	@{{compose}} exec prometheus sh -lc 'wget -qO- http://localhost:9090/-/ready >/dev/null && echo "  ✅ ready" || echo "  ❌ not ready"'
+	@echo "Loki:"
+	@{{compose}} exec loki sh -lc 'wget -qO- http://localhost:3100/ready >/dev/null && echo "  ✅ ready" || echo "  ❌ not ready"'
+	@echo "Tempo:"
+	@{{compose}} exec tempo sh -lc 'wget -qO- http://localhost:3200/ready >/dev/null && echo "  ✅ ready" || echo "  ❌ not ready"'
+	@echo "Grafana:"
+	@{{compose}} exec grafana sh -lc 'wget -qO- http://localhost:3000/api/health >/dev/null && echo "  ✅ ready" || echo "  ❌ not ready"'
+
+# Open other observability UIs
+obs-open-prom:
+	@python - <<-'PY'
+	import os, webbrowser
+	url = os.environ.get("PROM_URL", "http://localhost:9090")
+	try: webbrowser.open(url); print(f"Opened {url} in the default browser.")
+	except Exception as e: print(f"Please open {url} manually (auto-open failed: {e})")
+	PY
+
+obs-open-tempo:
+	@python - <<-'PY'
+	import os, webbrowser
+	url = os.environ.get("TEMPO_URL", "http://localhost:3200")
+	try: webbrowser.open(url); print(f"Opened {url} in the default browser.")
+	except Exception as e: print(f"Please open {url} manually (auto-open failed: {e})")
+	PY
+
+obs-open-loki:
+	@python - <<-'PY'
+	import os, webbrowser
+	url = os.environ.get("LOKI_URL", "http://localhost:3100")
+	try: webbrowser.open(url); print(f"Opened {url} in the default browser.")
+	except Exception as e: print(f"Please open {url} manually (auto-open failed: {e})")
+	PY
+
+# Diagnostics bundle
+obs-diag:
+	@echo "== docker compose ps =="
+	@{{compose}} ps
+	@echo "\n== observability logs (last 200) =="
+	@{{compose}} logs --tail=200 otel-collector promtail loki tempo prometheus grafana
+	@echo "\n== ports =="
+	@{{container_app}} ps --format 'table {{ "{{" }}.Names{{ "}}" }}\t{{ "{{" }}.Ports{{ "}}" }}'
+
+# Reset observability data (Grafana + Loki + Tempo)
+obs-reset:
+	@echo "Stopping observability services..."
+	@{{compose}} stop otel-collector promtail loki tempo prometheus grafana
+	@echo "Removing data volumes..."
+	@{{container_app}} volume rm -f n8n_tut_grafana_data || true
+	@echo "Done. Start again with: just obs-up"

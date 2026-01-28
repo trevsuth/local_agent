@@ -48,6 +48,28 @@ If you use Podman or another Docker alternative, update the container command in
 - Recreate and reseed DB: `just init-db`
 - Reseed only: `just reseed-db`
 
+## Observability
+
+This stack includes OpenTelemetry Collector, Prometheus, Loki, Tempo, and Grafana. Promtail ships container logs to Loki with container name labels; the collector handles OTLP metrics/traces.
+
+Services (host ports):
+- OTel Collector (OTLP gRPC/HTTP): `http://localhost:4317` / `http://localhost:4318`
+- Prometheus UI: `http://localhost:9090`
+- Loki API: `http://localhost:3100`
+- Tempo (traces): `http://localhost:3200`
+- Grafana UI: `http://localhost:3000` (default `admin` / `admin`)
+- Promtail (logs shipper): `http://localhost:9080`
+
+Observability recipes:
+- `just obs-up` / `just obs-down`
+- `just obs-logs`
+- `just obs-urls`
+- `just obs-open` (Grafana)
+
+MCP tracing:
+- Traces are exported via OTLP/HTTP to the collector.
+- Env overrides: `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`
+
 ## MCP Tools
 
 ### health
@@ -121,6 +143,28 @@ Example response:
     }
   ],
   "explanation": "Order is short on Flux Capacitor (need 10, have 2). Lead time is 5 days; earliest ship date is 2026-02-05."
+}
+```
+
+### get_all_products
+Return all products with the number of units buildable from parts on hand.
+
+Input:
+- No parameters
+
+Returns:
+- `products` (array):
+  - `product_id` (int)
+  - `product_name` (string)
+  - `units_on_hand` (int)
+
+Example response:
+```json
+{
+  "products": [
+    {"product_id": 1, "product_name": "Nova Widget", "units_on_hand": 12},
+    {"product_id": 2, "product_name": "Vertex Device", "units_on_hand": 4}
+  ]
 }
 ```
 ## Diagrams
