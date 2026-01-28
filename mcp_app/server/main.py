@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
-import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -17,12 +15,14 @@ from mcp_app.server.services.availability import (
     OrderLine,
     quote_availability,
 )
+from mcp_app.server.observability import setup_logging, setup_tracing, get_tracer
 from mcp_app.server.tools.health import register_health_tool
 from mcp_app.server.routes.health import register_health_route
 
 # IMPORTANT: for stdio transport, don't print to stdout; log to stderr.
-logging.basicConfig(stream=sys.stderr, level=os.environ.get("LOG_LEVEL", "INFO"))
-log = logging.getLogger("mcp-demo")
+log = setup_logging("mcp-demo")
+setup_tracing("mcp-demo")
+tracer = get_tracer("mcp_app.server")
 
 mcp = FastMCP("MCP Demo Server")
 register_health_tool(mcp)
@@ -41,28 +41,34 @@ def quote_inventory_availability(
     includes the bottleneck components.
     """
     # Expect JSON payload to keep MCP input schema simple for clients.
-    data = json.loads(payload)
-    lines: List[Dict[str, float]] = data.get("lines", [])
-    handling_days = float(data.get("handling_days", 2))
-    shipping_days = float(data.get("shipping_days", 5))
-    parsed_lines = [
-        OrderLine(
-            product_id=int(line["product_id"]),
-            quantity=int(line["quantity"]),
-        )
-        for line in lines
-    ]
-    path: Path = get_db_path(db_path or None)
-    log.info("quote_inventory_availability db=%s lines=%d", path, len(parsed_lines))
+    with tracer.start_as_current_span("quote_inventory_availability") as span:
+        data = json.loads(payload)
+        lines: List[Dict[str, float]] = data.get("lines", [])
+        handling_days = float(data.get("handling_days", 2))
+        shipping_days = float(data.get("shipping_days", 5))
+        parsed_lines = [
+            OrderLine(
+                product_id=int(line["product_id"]),
+                quantity=int(line["quantity"]),
+            )
+            for line in lines
+        ]
+        path: Path = get_db_path(db_path or None)
+        log.info("quote_inventory_availability db=%s lines=%d", path, len(parsed_lines))
 
-    with db_session(path) as conn:
-        quote = quote_availability(
-            conn,
-            parsed_lines,
-            handling_days=int(handling_days),
-            shipping_days=int(shipping_days),
-        )
-    return quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
+        span.set_attribute("db.path", str(path))
+        span.set_attribute("order.lines", len(parsed_lines))
+        span.set_attribute("order.handling_days", int(handling_days))
+        span.set_attribute("order.shipping_days", int(shipping_days))
+
+        with db_session(path) as conn:
+            quote = quote_availability(
+                conn,
+                parsed_lines,
+                handling_days=int(handling_days),
+                shipping_days=int(shipping_days),
+            )
+        return quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
 
 
 # Register tool with a simplified, explicit schema for client compatibility.
