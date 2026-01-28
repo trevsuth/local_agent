@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastmcp import FastMCP
+from mcp_app.server.observability import get_tracer
 
 
 def register_health_tool(mcp: FastMCP) -> None:
@@ -32,9 +33,11 @@ def register_health_tool(mcp: FastMCP) -> None:
         - the server is running
         - the correct environment is loaded
         """
-        return {
-            "status": "ok",
-            "service": "mcp-demo",
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "env": os.environ.get("MCP_ENV", "unknown"),
-        }
+        tracer = get_tracer("mcp_app.server.health")
+        with tracer.start_as_current_span("health"):
+            return {
+                "status": "ok",
+                "service": "mcp-demo",
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "env": os.environ.get("MCP_ENV", "unknown"),
+            }
