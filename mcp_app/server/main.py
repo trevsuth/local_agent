@@ -18,6 +18,7 @@ from mcp_app.server.services.availability import (
 from mcp_app.server.observability import setup_logging, setup_tracing, get_tracer
 from mcp_app.server.tools.health import register_health_tool
 from mcp_app.server.tools.products import register_products_tool
+from mcp_app.server.tools.customers import register_customers_tool
 from mcp_app.server.routes.health import register_health_route
 
 # IMPORTANT: for stdio transport, don't print to stdout; log to stderr.
@@ -29,6 +30,7 @@ mcp = FastMCP("MCP Demo Server")
 register_health_tool(mcp)
 register_health_route(mcp)
 register_products_tool(mcp)
+register_customers_tool(mcp)
 
 
 def quote_inventory_availability(

@@ -15,6 +15,7 @@ This repo sets up a completely self-hosted AI agent playground composed of:
 - `setup/observability/` — configs for OTel Collector, Loki, Tempo, Prometheus, Promtail, Grafana.
 - `data/` — SQLite DB files used by FastMCP (e.g., `mcp_demo.sqlite`).
 - `docs/` — project docs + Mermaid diagrams.
+- `docs/tools.md` — MCP tool reference.
 - `documents/` — general documents the MCP server can search/index.
 - `justfile` — convenience commands (`just up`, `just mcp-smoke`, etc.).
 
