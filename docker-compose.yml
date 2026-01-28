@@ -50,6 +50,8 @@ services:
       - MCP_TRANSPORT=http
       - MCP_DB_PATH=/data/mcp_demo.sqlite
       - LOG_LEVEL=INFO
+      - OTEL_SERVICE_NAME=mcp-demo
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
       # Optional: expose a port used by FastMCP's HTTP transport
       - MCP_HTTP_HOST=0.0.0.0
       - MCP_HTTP_PORT=8000
@@ -68,9 +70,100 @@ services:
     depends_on:
       - ollama
 
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/config.yml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./setup/observability/loki.yml:/etc/loki/config.yml:ro
+    restart: unless-stopped
+    networks:
+      - backend
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector.yml"]
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+      - "${OTEL_PROM_PORT:-8889}:8889"
+    volumes:
+      - ./setup/observability/otel-collector.yml:/etc/otel-collector.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - loki
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "${PROM_PORT:-9090}:9090"
+    volumes:
+      - ./setup/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - otel-collector
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./setup/observability/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - loki
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo.yml"]
+    ports:
+      - "${TEMPO_HTTP_PORT:-3200}:3200"
+      - "${TEMPO_OTLP_GRPC_PORT:-4319}:4317"
+      - "${TEMPO_OTLP_HTTP_PORT:-4320}:4318"
+    volumes:
+      - ./setup/observability/tempo.yml:/etc/tempo.yml:ro
+    restart: unless-stopped
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./setup/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    networks:
+      - backend
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
 networks:
   backend:
 
 volumes:
   n8n_data:
   ollama_data:
+  grafana_data:
