@@ -1,0 +1,44 @@
+flowchart LR
+  subgraph Entities
+    U[users]
+    S[suppliers]
+    P[products]
+    C[components]
+    B[bill_of_materials]
+    OH[order_headers]
+    OD[order_details]
+    A[audit_log]
+  end
+
+  S -->|supplies| C
+  P -->|has BOM| B
+  C -->|used in BOM| B
+  U -->|places| OH
+  OH -->|contains| OD
+  P -->|ordered| OD
+
+  subgraph Indexes
+    I1[idx_order_headers_user_id]
+    I2[idx_order_headers_status]
+    I3[idx_order_details_order_id]
+    I4[idx_order_details_product_id]
+    I5[idx_components_supplier_id]
+    I6[idx_bom_component_id]
+  end
+
+  I1 -.-> OH
+  I2 -.-> OH
+  I3 -.-> OD
+  I4 -.-> OD
+  I5 -.-> C
+  I6 -.-> B
+
+  subgraph Triggers
+    T1[trg_order_details_total_ins]
+    T2[trg_order_details_total_upd]
+    T3[trg_order_details_total_del]
+  end
+
+  T1 -.-> OH
+  T2 -.-> OH
+  T3 -.-> OH

@@ -1,0 +1,82 @@
+erDiagram
+  audit_log {
+    INTEGER id PK
+    TEXT ts_utc
+    INTEGER actor_user_id
+    TEXT source
+    TEXT action
+    TEXT entity_type
+    TEXT entity_id
+    TEXT details_json
+  }
+
+  users {
+    INTEGER id PK
+    TEXT first_name
+    TEXT last_name
+    TEXT title
+    TEXT company
+    TEXT address
+    TEXT city
+    TEXT state
+    TEXT zipcode
+    TEXT phone_number
+  }
+
+  suppliers {
+    INTEGER id PK
+    TEXT supplier_name
+    TEXT address
+    TEXT city
+    TEXT state
+    TEXT zipcode
+    TEXT contact_name
+    TEXT phone_number
+  }
+
+  products {
+    INTEGER id PK
+    TEXT product_name
+    REAL price
+  }
+
+  components {
+    INTEGER id PK
+    INTEGER supplier_id FK
+    TEXT component_name
+    INTEGER quantity_on_hand
+    REAL unit_cost
+    INTEGER lead_time_days
+    INTEGER reorder_point
+  }
+
+  bill_of_materials {
+    INTEGER product_id PK, FK
+    INTEGER component_id PK, FK
+    INTEGER component_qty
+  }
+
+  order_headers {
+    INTEGER id PK
+    INTEGER user_id FK
+    TEXT order_date
+    TEXT delivery_date
+    REAL order_total
+    TEXT status
+  }
+
+  order_details {
+    INTEGER id PK
+    INTEGER order_id FK
+    INTEGER product_id FK
+    INTEGER quantity
+    REAL unit_price
+    REAL line_total
+  }
+
+  suppliers ||--o{ components : supplies
+  products  ||--o{ bill_of_materials : has
+  components ||--o{ bill_of_materials : used_in
+  users ||--o{ order_headers : places
+  order_headers ||--o{ order_details : contains
+  products ||--o{ order_details : ordered
