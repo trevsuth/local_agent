@@ -32,6 +32,10 @@ down-vols:
 restart:
 	{{compose}} restart
 
+# rebuild all containers
+rebuild:
+	{{compose}} up -d --build
+
 # get processes
 ps:
 	{{compose}} ps
@@ -175,7 +179,7 @@ mcp-smoke:
 	@echo "🔍 Checking MCP HTTP endpoint from inside the container..."
 	@{{compose}} exec mcp uv run python -c "import httpx, sys; r=httpx.get('http://127.0.0.1:8000/mcp', headers={'Accept':'text/event-stream'}); print('HTTP status', r.status_code); sys.exit(0 if r.status_code < 500 else 1)"
 	@echo "🔍 Running availability quote inside MCP container..."
-	@{{compose}} exec mcp uv run python -c "from mcp_app.server.main import quote_inventory_availability; print('✅ Quote result:', quote_inventory_availability.__wrapped__([{'product_id':1,'quantity':10}]))"
+	@{{compose}} exec mcp uv run python -c "from mcp_app.server.db import get_db_path, connect; from mcp_app.server.services.availability import OrderLine, quote_availability; db=get_db_path(); conn=connect(db); quote=quote_availability(conn, [OrderLine(product_id=1, quantity=10)]); conn.close(); data = quote.model_dump() if hasattr(quote, 'model_dump') else quote.dict(); print('✅ Quote result:', data)"
 
 # All-in-one local setup: verify tools, sync deps, start stack, open n8n
 go:
@@ -194,15 +198,12 @@ go:
 	@echo "👉 Starting containers (ollama, mcp, n8n)..."
 	@docker compose up -d
 	@echo "👉 Opening n8n in your browser (http://localhost:5678)..."
-	@python - <<'PY'
-import os, webbrowser
-url = os.environ.get("N8N_URL", "http://localhost:5678")
-try:
-    webbrowser.open(url)
-    print(f"Opened {url} in the default browser.")
-except Exception as e:
-    print(f"Please open {url} manually (auto-open failed: {e})")
-PY
+	@python - <<-'PY'
+	import os, webbrowser
+	url = os.environ.get("N8N_URL", "http://localhost:5678")
+	try: webbrowser.open(url); print(f"Opened {url} in the default browser.")
+	except Exception as e: print(f"Please open {url} manually (auto-open failed: {e})")
+	PY
 
 # Check from inside docker network
 mcp-ping-docker:

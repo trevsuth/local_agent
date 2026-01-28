@@ -1,13 +1,15 @@
 # mcp_app/server/main.py
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List
 
 from fastmcp import FastMCP
+from fastmcp.tools import FunctionTool
 
 from mcp_app.server.db import db_session, get_db_path
 from mcp_app.server.services.availability import (
@@ -27,13 +29,10 @@ register_health_tool(mcp)
 register_health_route(mcp)
 
 
-@mcp.tool
 def quote_inventory_availability(
-    lines: List[OrderLine],
-    handling_days: int = 2,
-    shipping_days: int = 5,
-    db_path: Optional[str] = None,
-) -> AvailabilityQuote:
+    payload: str,
+    db_path: str = "",
+) -> Dict[str, object]:
     """
     Quote whether an order can be fulfilled from current component inventory.
 
@@ -41,16 +40,47 @@ def quote_inventory_availability(
     returns the anticipated ship/delivery dates based on component lead times and
     includes the bottleneck components.
     """
-    path: Path = get_db_path(db_path)
-    log.info("quote_inventory_availability db=%s lines=%d", path, len(lines))
+    # Expect JSON payload to keep MCP input schema simple for clients.
+    data = json.loads(payload)
+    lines: List[Dict[str, float]] = data.get("lines", [])
+    handling_days = float(data.get("handling_days", 2))
+    shipping_days = float(data.get("shipping_days", 5))
+    parsed_lines = [
+        OrderLine(
+            product_id=int(line["product_id"]),
+            quantity=int(line["quantity"]),
+        )
+        for line in lines
+    ]
+    path: Path = get_db_path(db_path or None)
+    log.info("quote_inventory_availability db=%s lines=%d", path, len(parsed_lines))
 
     with db_session(path) as conn:
-        return quote_availability(
+        quote = quote_availability(
             conn,
-            lines,
-            handling_days=handling_days,
-            shipping_days=shipping_days,
+            parsed_lines,
+            handling_days=int(handling_days),
+            shipping_days=int(shipping_days),
         )
+    return quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
+
+
+# Register tool with a simplified, explicit schema for client compatibility.
+_quote_tool = FunctionTool.from_function(
+    quote_inventory_availability,
+    name="quote_inventory_availability",
+    output_schema={"type": "object", "additionalProperties": True},
+)
+_quote_tool.parameters = {
+    "type": "object",
+    "required": ["payload"],
+    "properties": {
+        "payload": {"type": "string"},
+        "db_path": {"type": "string", "default": ""},
+    },
+    "additionalProperties": False,
+}
+mcp.add_tool(_quote_tool)
 
 
 if __name__ == "__main__":
