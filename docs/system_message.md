@@ -130,3 +130,32 @@ Response:
   }
 }
 ```
+
+## get_customer_by_id
+Use for: retrieving a customer by id.
+
+Input:
+- `customer_id` (int, required)
+
+Response (when found):
+```json
+{
+  "customer": {
+    "id": 1,
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+    "title": "Engineer",
+    "company": "Analytical Engines Inc.",
+    "address": "123 Example St",
+    "city": "London",
+    "state": "LN",
+    "zipcode": "SW1A 1AA",
+    "phone_number": "555-123-4567"
+  }
+}
+```
+
+Response (not found):
+```json
+{ "error": "Customer 1 not found." }
+```

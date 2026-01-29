@@ -188,3 +188,58 @@ def register_customers_tool(mcp: FastMCP) -> None:
         "additionalProperties": False,
     }
     mcp.add_tool(_add_tool)
+
+    def get_customer_by_id(customer_id: object | None = None) -> Dict[str, object]:
+        """
+        Return a single customer by id.
+        """
+        tracer = get_tracer("mcp_app.server.customers")
+        with tracer.start_as_current_span("get_customer_by_id"):
+            if customer_id is None:
+                return {"error": "Field customer_id must be present."}
+            try:
+                cid = int(customer_id)
+            except (TypeError, ValueError):
+                return {"error": "Field customer_id must be a int."}
+
+            path = get_db_path()
+            with db_session(path) as conn:
+                row = conn.execute(
+                    """
+                    SELECT id, first_name, last_name, title, company, address, city, state, zipcode, phone_number
+                    FROM users
+                    WHERE id = ?
+                    """,
+                    (cid,),
+                ).fetchone()
+
+            if row is None:
+                return {"error": f"Customer {cid} not found."}
+
+            return {
+                "customer": {
+                    "id": int(row["id"]),
+                    "first_name": str(row["first_name"]),
+                    "last_name": str(row["last_name"]),
+                    "title": str(row["title"]),
+                    "company": str(row["company"]),
+                    "address": str(row["address"]),
+                    "city": str(row["city"]),
+                    "state": str(row["state"]),
+                    "zipcode": str(row["zipcode"]),
+                    "phone_number": str(row["phone_number"]),
+                }
+            }
+
+    _get_by_id_tool = FunctionTool.from_function(
+        get_customer_by_id,
+        name="get_customer_by_id",
+        output_schema={"type": "object", "additionalProperties": True},
+    )
+    _get_by_id_tool.parameters = {
+        "type": "object",
+        "required": ["customer_id"],
+        "properties": {"customer_id": {"type": "number"}},
+        "additionalProperties": False,
+    }
+    mcp.add_tool(_get_by_id_tool)

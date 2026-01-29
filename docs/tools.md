@@ -160,3 +160,31 @@ Example response:
   }
 }
 ```
+
+## get_customer_by_id
+Return a customer by id.
+
+Input:
+- `customer_id` (int, required)
+
+Returns:
+- `customer` (object) with full user fields
+- If not found: `{ "error": "Customer <id> not found." }`
+
+Example response:
+```json
+{
+  "customer": {
+    "id": 1,
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+    "title": "Engineer",
+    "company": "Analytical Engines Inc.",
+    "address": "123 Example St",
+    "city": "London",
+    "state": "LN",
+    "zipcode": "SW1A 1AA",
+    "phone_number": "555-123-4567"
+  }
+}
+```
