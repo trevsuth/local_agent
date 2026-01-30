@@ -1,0 +1,311 @@
+{
+       "name": "Inventory Workflow (Planner)",
+       "nodes": [
+              {
+                     "parameters": {},
+                     "type": "n8n-nodes-base.manualTrigger",
+                     "typeVersion": 1,
+                     "position": [
+                            -1408,
+                            128
+                     ],
+                     "id": "83d839f9-bcd3-49c0-a36c-b4e5b8b29cb4",
+                     "name": "When clicking ‘Execute workflow’"
+              },
+              {
+                     "parameters": {
+                            "values": {
+                                   "string": [
+                                          {
+                                                 "name": "user_message",
+                                                 "value": "What products do we sell?"
+                                          }
+                                   ]
+                            },
+                            "options": {}
+                     },
+                     "type": "n8n-nodes-base.set",
+                     "typeVersion": 2,
+                     "position": [
+                            -1248,
+                            128
+                     ],
+                     "id": "0caa14e5-96ef-48e2-b115-ab382444df24",
+                     "name": "Set user message"
+              },
+              {
+                     "parameters": {
+                            "values": {
+                                   "string": [
+                                          {
+                                                 "name": "tools_json",
+                                                 "value": "{   \"health\": { \"required\": {} },   \"get_all_products\": { \"required\": {} },   \"get_all_customers\": { \"required\": {} },   \"get_customer_by_id\": { \"required\": { \"customer_id\": \"int\" } },   \"add_customer\": {     \"required\": {       \"first_name\": \"string\",       \"last_name\": \"string\",       \"title\": \"string\",       \"company\": \"string\",       \"address\": \"string\",       \"city\": \"string\",       \"state\": \"string\",       \"zipcode\": \"string\",       \"phone_number\": \"string\"     }   },   \"quote_inventory_availability\": {     \"required\": { \"payload\": \"string\" }   } }"
+                                          },
+                                          {
+                                                 "name": "planner_examples",
+                                                 "value": "EXAMPLES:  USER_MESSAGE: \"Is the system up?\" → {   \"action\": \"tool\",   \"tool_name\": \"health\",   \"tool_args\": {},   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"What products do we currently have available?\" → {   \"action\": \"tool\",   \"tool_name\": \"get_all_products\",   \"tool_args\": {},   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"Show me all customers\" → {   \"action\": \"tool\",   \"tool_name\": \"get_all_customers\",   \"tool_args\": {},   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"What can you tell me about customer_id 101?\" → {   \"action\": \"tool\",   \"tool_name\": \"get_customer_by_id\",   \"tool_args\": { \"customer_id\": 101 },   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"Tell me about customer 42\" → {   \"action\": \"tool\",   \"tool_name\": \"get_customer_by_id\",   \"tool_args\": { \"customer_id\": 42 },   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"Add a new customer named Ada Lovelace who works at Analytical Engines Inc.\" → {   \"action\": \"ask_user\",   \"tool_name\": \"add_customer\",   \"tool_args\": null,   \"missing_fields\": [     \"first_name\",     \"last_name\",     \"title\",     \"company\",     \"address\",     \"city\",     \"state\",     \"zipcode\",     \"phone_number\"   ],   \"followup_question\": \"I can add the customer, but I need their title, address, city, state, zipcode, and phone number.\" }  USER_MESSAGE: \"Add customer Ada Lovelace, Engineer at Analytical Engines Inc., 123 Example St, London, LN, SW1A 1AA, phone 555-123-4567\" → {   \"action\": \"tool\",   \"tool_name\": \"add_customer\",   \"tool_args\": {     \"first_name\": \"Ada\",     \"last_name\": \"Lovelace\",     \"title\": \"Engineer\",     \"company\": \"Analytical Engines Inc.\",     \"address\": \"123 Example St\",     \"city\": \"London\",     \"state\": \"LN\",     \"zipcode\": \"SW1A 1AA\",     \"phone_number\": \"555-123-4567\"   },   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"Can we fulfill an order for 10 units of product 1?\" → {   \"action\": \"tool\",   \"tool_name\": \"quote_inventory_availability\",   \"tool_args\": {     \"payload\": \"{\\\"lines\\\":[{\\\"product_id\\\":1,\\\"quantity\\\":10}]}\"   },   \"missing_fields\": [],   \"followup_question\": null }  USER_MESSAGE: \"Can you check inventory availability?\" → {   \"action\": \"ask_user\",   \"tool_name\": \"quote_inventory_availability\",   \"tool_args\": null,   \"missing_fields\": [\"lines (product_id, quantity)\"],   \"followup_question\": \"Which product IDs and quantities should I check availability for?\" }"
+                                          }
+                                   ]
+                            },
+                            "options": {}
+                     },
+                     "type": "n8n-nodes-base.set",
+                     "typeVersion": 2,
+                     "position": [
+                            -1072,
+                            128
+                     ],
+                     "id": "bd188744-72d9-430b-9d3d-562f4d61bd56",
+                     "name": "Tool registry (Set)"
+              },
+              {
+                     "parameters": {
+                            "modelId": {
+                                   "__rl": true,
+                                   "mode": "list",
+                                   "value": "qwen2.5:3b"
+                            },
+                            "messages": {
+                                   "values": [
+                                          {
+                                                 "content": "=USER_MESSAGE:\n{{$node[\"Set user message\"].json.user_message}}\n\nTOOL_REGISTRY:\n{{$node[\"Tool registry (Set)\"].json.tools_json}}\n\nEXAMPLES:\n{{$node[\"Tool registry (Set)\"].json.planner_examples}}\n"
+                                          }
+                                   ]
+                            },
+                            "options": {
+                                   "system": "You are a planner for an inventory assistant.\n\nYou will receive:\n1) USER_MESSAGE\n2) TOOL_REGISTRY\n3) EXAMPLES\n\nYour job is to decide whether a tool should be used, and if so, which one and with what arguments.\n\nReturn ONLY valid JSON matching this schema:\n{\n  \"action\": \"tool\" | \"ask_user\" | \"answer\",\n  \"tool_name\": string | null,\n  \"tool_args\": object | null,\n  \"missing_fields\": string[],\n  \"followup_question\": string | null\n}\n\nRules:\n- If a tool can directly answer the USER_MESSAGE, set action=\"tool\".\n- Only choose tool_name values that appear in TOOL_REGISTRY.\n- tool_args must contain ONLY the fields required by that tool.\n- Never invent fields or tools.\n- If required information is missing, set action=\"ask_user\", list missing_fields, and ask ONE concise followup_question.\n- If no tool is needed, set action=\"answer\".\n- If USER_MESSAGE includes required values (for example an id number), extract them rather than asking.\n- Follow the patterns shown in EXAMPLES.\n- Return JSON only. No markdown. No explanation.",
+                                   "temperature": 0
+                            }
+                     },
+                     "type": "@n8n/n8n-nodes-langchain.ollama",
+                     "typeVersion": 1,
+                     "position": [
+                            -912,
+                            128
+                     ],
+                     "id": "4b4fb183-ddf7-4276-b0ae-0da2cfe8a293",
+                     "name": "LLM Planner",
+                     "credentials": {
+                            "ollamaApi": {
+                                   "id": "I9ySDbmiEbQ7t3Cn",
+                                   "name": "Ollama account"
+                            }
+                     }
+              },
+              {
+                     "parameters": {
+                            "conditions": {
+                                   "options": {
+                                          "caseSensitive": true,
+                                          "leftValue": "",
+                                          "typeValidation": "strict",
+                                          "version": 1
+                                   },
+                                   "conditions": [
+                                          {
+                                                 "id": "12fa8cfd-9fae-48f6-9ca3-5be3f1131ca1",
+                                                 "leftValue": "={{ $json.action }}",
+                                                 "rightValue": "ask_user",
+                                                 "operator": {
+                                                        "type": "string",
+                                                        "operation": "equals"
+                                                 }
+                                          }
+                                   ],
+                                   "combinator": "and"
+                            },
+                            "options": {}
+                     },
+                     "type": "n8n-nodes-base.if",
+                     "typeVersion": 2,
+                     "position": [
+                            -448,
+                            128
+                     ],
+                     "id": "d5699343-6790-461b-9ac0-184d11ee7476",
+                     "name": "IF ask_user?"
+              },
+              {
+                     "parameters": {
+                            "values": {
+                                   "string": [
+                                          {
+                                                 "name": "assistant_message",
+                                                 "value": "={{$json.followup_question || ('I need more information: ' + ($json.missing_fields || []).join(', '))}}"
+                                          }
+                                   ]
+                            },
+                            "options": {}
+                     },
+                     "type": "n8n-nodes-base.set",
+                     "typeVersion": 2,
+                     "position": [
+                            -208,
+                            0
+                     ],
+                     "id": "678ef545-209a-41b9-aeab-586d7475ed36",
+                     "name": "Ask user (output)"
+              },
+              {
+                     "parameters": {
+                            "modelId": {
+                                   "__rl": true,
+                                   "mode": "list",
+                                   "value": "qwen2.5:3b"
+                            },
+                            "messages": {
+                                   "values": [
+                                          {
+                                                 "content": "PLAN (JSON):\n{{ JSON.stringify($json, null, 2) }}\n\nIf plan.action is \"tool\": call the MCP tool plan.tool_name with exactly plan.tool_args.\nReturn ONLY the raw tool result as JSON.\n"
+                                          }
+                                   ]
+                            },
+                            "options": {
+                                   "system": "You are a tool execution agent. Follow the plan.\n- Use MCP tools when instructed.\n- Never invent tool arguments.\n- Output ONLY JSON.\n",
+                                   "temperature": 0
+                            }
+                     },
+                     "type": "@n8n/n8n-nodes-langchain.ollama",
+                     "typeVersion": 1,
+                     "position": [
+                            -208,
+                            208
+                     ],
+                     "id": "d8484ed3-ed8c-42b2-8ab9-2aecc755f9c3",
+                     "name": "LLM Tool Executor",
+                     "credentials": {
+                            "ollamaApi": {
+                                   "id": "I9ySDbmiEbQ7t3Cn",
+                                   "name": "Ollama account"
+                            }
+                     }
+              },
+              {
+                     "parameters": {
+                            "endpointUrl": "http://mcp:8000/mcp",
+                            "options": {
+                                   "timeout": 60000
+                            }
+                     },
+                     "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+                     "typeVersion": 1.2,
+                     "position": [
+                            -208,
+                            400
+                     ],
+                     "id": "c27f5417-fdd0-4e74-8dfd-61707bbbdc9d",
+                     "name": "MCP Client"
+              },
+              {
+                     "parameters": {
+                            "jsCode": "/**\n * This node normalizes the planner output into a real JSON object.\n * It assumes the planner returned JSON, possibly as a string.\n */\n\nlet raw = $json;\n\n// Case 1: planner already returned an object\nif (typeof raw === \"object\" && raw.action) {\n  return raw;\n}\n\n// Case 2: planner returned a string (common with LLMs)\nif (typeof raw === \"string\") {\n  try {\n    return JSON.parse(raw);\n  } catch (e) {\n    throw new Error(\"Planner output is not valid JSON string\");\n  }\n}\n\n// Case 3: planner returned { content: \"...\" }\nif (raw && typeof raw.content === \"string\") {\n  try {\n    // Strip code fences if present\n    const cleaned = raw.content\n      .replace(/```json/g, \"\")\n      .replace(/```/g, \"\")\n      .trim();\n\n    return JSON.parse(cleaned);\n  } catch (e) {\n    throw new Error(\"Planner content could not be parsed as JSON\");\n  }\n}\n\nthrow new Error(\"Unrecognized planner output format\");"
+                     },
+                     "type": "n8n-nodes-base.code",
+                     "typeVersion": 2,
+                     "position": [
+                            -624,
+                            128
+                     ],
+                     "id": "c5a8dc52-9642-425a-b973-f5641cac0b2a",
+                     "name": "Parse Output"
+              }
+       ],
+       "pinData": {},
+       "connections": {
+              "When clicking ‘Execute workflow’": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Set user message",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "Set user message": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Tool registry (Set)",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "Tool registry (Set)": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "LLM Planner",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "LLM Planner": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Parse Output",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "IF ask_user?": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Ask user (output)",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ],
+                            [
+                                   {
+                                          "node": "LLM Tool Executor",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "MCP Client": {
+                     "ai_tool": [
+                            [
+                                   {
+                                          "node": "LLM Tool Executor",
+                                          "type": "ai_tool",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "Parse Output": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "IF ask_user?",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              }
+       },
+       "active": false,
+       "settings": {
+              "executionOrder": "v1",
+              "availableInMCP": false
+       },
+       "versionId": "66e775d8-8553-4ee0-88f2-f49ed436336e",
+       "meta": {
+              "instanceId": "e04524174cf637a0b07038e129ee76bc4550ec2b9aacb365a003962882ae2926"
+       },
+       "id": "u393FBMhtfvQdcWDgODHf",
+       "tags": []
+}

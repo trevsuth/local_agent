@@ -1,0 +1,129 @@
+{
+       "name": "Inventory Workflow (no planner)",
+       "nodes": [
+              {
+                     "parameters": {},
+                     "type": "n8n-nodes-base.manualTrigger",
+                     "typeVersion": 1,
+                     "position": [
+                            -560,
+                            -32
+                     ],
+                     "id": "cb991e4e-30c7-41b6-82ed-91c31881a189",
+                     "name": "When clicking ‘Execute workflow’"
+              },
+              {
+                     "parameters": {
+                            "values": {
+                                   "string": [
+                                          {
+                                                 "name": "user_message",
+                                                 "value": "Who is customer_id 101?"
+                                          }
+                                   ]
+                            },
+                            "options": {}
+                     },
+                     "type": "n8n-nodes-base.set",
+                     "typeVersion": 2,
+                     "position": [
+                            -352,
+                            -32
+                     ],
+                     "id": "b0c6c2a5-5f48-4a5a-9f41-1e7c5c7f9d10",
+                     "name": "Set user message"
+              },
+              {
+                     "parameters": {
+                            "modelId": {
+                                   "__rl": true,
+                                   "mode": "list",
+                                   "value": "qwen2.5:3b"
+                            },
+                            "messages": {
+                                   "values": [
+                                          {
+                                                 "content": "={{$json.user_message}}"
+                                          }
+                                   ]
+                            },
+                            "options": {
+                                   "system": "You are an inventory assistant with access to MCP tools.\n\nRules:\n- If the user’s request requires data you don’t have, call the appropriate MCP tool.\n- Never invent tool inputs or fields. Use exactly the tool’s schema.\n- If required information is missing, ask ONE concise follow-up question.\n- If you call a tool, use its result to answer the user clearly.\n",
+                                   "temperature": 0.1
+                            }
+                     },
+                     "type": "@n8n/n8n-nodes-langchain.ollama",
+                     "typeVersion": 1,
+                     "position": [
+                            -96,
+                            -32
+                     ],
+                     "id": "6fd575d7-f211-4a12-b048-30ae8ef0514f",
+                     "name": "Message a model",
+                     "credentials": {
+                            "ollamaApi": {
+                                   "id": "I9ySDbmiEbQ7t3Cn",
+                                   "name": "Ollama account"
+                            }
+                     }
+              },
+              {
+                     "parameters": {
+                            "endpointUrl": "http://mcp:8000/mcp",
+                            "options": {
+                                   "timeout": 60000
+                            }
+                     },
+                     "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+                     "typeVersion": 1.2,
+                     "position": [
+                            -64,
+                            208
+                     ],
+                     "id": "b936e262-2087-42fa-a34d-8d0220185438",
+                     "name": "MCP Client"
+              }
+       ],
+       "pinData": {},
+       "connections": {
+              "When clicking ‘Execute workflow’": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Set user message",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "Set user message": {
+                     "main": [
+                            [
+                                   {
+                                          "node": "Message a model",
+                                          "type": "main",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              },
+              "MCP Client": {
+                     "ai_tool": [
+                            [
+                                   {
+                                          "node": "Message a model",
+                                          "type": "ai_tool",
+                                          "index": 0
+                                   }
+                            ]
+                     ]
+              }
+       },
+       "active": false,
+       "settings": {
+              "executionOrder": "v1",
+              "availableInMCP": false
+       },
+       "tags": []
+}
